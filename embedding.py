@@ -1,71 +1,4 @@
-import os
-from langchain_community.llms import Ollama
-from langchain.vectorstores import Chroma
-from langchain.text_splitter import CharacterTextSplitter
-from langchain.schema import Document
-from langchain.embeddings import HuggingFaceEmbeddings  # Open-source embeddings
-import base64
-from io import BytesIO
-from PIL import Image as PILImage
 
-# Initialize Ollama LLM for explanations
-llm = Ollama(model="llava:7b")
-
-# Function to convert image to Base64
-def convert_to_base64(pil_image):
-    """
-    Convert a PIL image to Base64 encoding, ensuring compatibility with JPEG format.
-    """
-    if pil_image.mode == "RGBA":
-        pil_image = pil_image.convert("RGB")  # Convert RGBA to RGB
-    buffered = BytesIO()
-    pil_image.save(buffered, format="JPEG")
-    img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
-    return img_str
-
-
-# Path to the image
-image_file_path = r"E:/output_images/Fig51_233.jpeg"
-pil_image = PILImage.open(image_file_path)
-
-# Convert the image to Base64
-image_b64 = convert_to_base64(pil_image)
-
-# Bind the image to the LLM context and invoke it
-llm_with_image_context = llm.bind(images=[image_b64])
-explanation = llm_with_image_context.invoke("detail Explanation about the image and content in it ")
-print("Generated Explanation:", explanation)
-
-
-# Create a Document object for the explanation
-document = Document(page_content=explanation, metadata={"image_path": image_file_path})
-
-# Split the document into smaller chunks
-text_splitter = CharacterTextSplitter(chunk_size=750, chunk_overlap=100)
-doc_splits = text_splitter.split_documents([document])
-
-# Initialize Hugging Face embeddings
-embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-
-#to store all the explanations at one place
-persist_directory = r"E:\stock\explain"
-
-# Store the explanation and embeddings in Chroma
-vectorstore = Chroma.from_documents(
-    documents=doc_splits,
-    collection_name="image-explanations",
-    embedding=embedding_model,
-    persist_directory=persist_directory
-)
-
-# Persist the vectorstore
-vectorstore.persist()
-
-print("Explanation and embeddings successfully stored in the Chroma database.")
-
-
-
-""""THIS IS FOR FOLDER WISE (SINCE MY LAPTOP WAS OLD MODEL I HAD TO DO IT FILE BY FILE)
 import os
 from langchain_community.llms import Ollama
 from langchain.vectorstores import Chroma
@@ -140,4 +73,3 @@ vectorstore = Chroma.from_documents(
 vectorstore.persist()
 
 print("All explanations and embeddings successfully stored in the Chroma database.")
-"""
